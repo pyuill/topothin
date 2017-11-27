@@ -5,17 +5,12 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution.
  * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
- * <br>
- * Note that until the JTS Topology Suite is formally released under EPL v1.0
- * the licenses of this program (EPL) and JTS (LGPL) are incompatible. This program
- * will not reach a 1.0 release status until JTS is released by the Eclipse working group
- * LocationTech under EPL v1.0
  */
 package au.id.yuill.topothin.abs;
 
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.MultiPolygon;
-import com.vividsolutions.jts.io.WKBReader;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.io.WKBReader;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -27,13 +22,20 @@ import java.util.ArrayList;
  * <br><br>
  * This class depends on the creation of PostGIS tables from ABS datasets by external means
  * eg QGIS import.
+ * <br><br>
+ * It is highly desirable to use datasets released at the same time, but the ABS does not always
+ * release all datasets together. There may be a compelling reason to attempt to mix and match
+ * release years, but this may not produce sensible results.
  *
  * @version 1.0
  * @author Peter Yuill
  */
 public class BuildTables {
 
-    public static String releaseYear;
+    public static String poaReleaseYear;
+    public static String lgaReleaseYear;
+    public static String sedReleaseYear;
+    public static String cedReleaseYear;
     public static String dbUrl;
     public static String dbUser;
     public static String dbPass;
@@ -41,13 +43,16 @@ public class BuildTables {
     public static Statement stmt;
 
     public static void main(String[] args) throws Exception {
-        if (args.length == 4) {
-            releaseYear = args[0];
-            dbUrl = args[1];
-            dbUser = args[2];
-            dbPass = args[3];
+        if (args.length == 7) {
+            poaReleaseYear = args[0];
+            lgaReleaseYear = args[1];
+            sedReleaseYear = args[2];
+            cedReleaseYear = args[3];
+            dbUrl = args[4];
+            dbUser = args[5];
+            dbPass = args[6];
         } else {
-            System.out.println("usage: BuildTables releaseYear dbUrl dbUser dbPassword");
+            System.out.println("usage: BuildTables poaReleaseYear lgaReleaseYear sedReleaseYear cedReleaseYear dbUrl dbUser dbPassword");
             System.exit(0);
         }
         Class.forName("org.postgresql.Driver");
@@ -61,10 +66,10 @@ public class BuildTables {
         createAdminTable("ste", 1);
         createPostcodeTable();
         populateState();
-        populateAdminTable("poa");
-        populateAdminTable("lga");
-        populateAdminTable("sed");
-        populateAdminTable("ced");
+        populateAdminTable("poa", poaReleaseYear);
+        populateAdminTable("lga", lgaReleaseYear);
+        populateAdminTable("sed", sedReleaseYear);
+        populateAdminTable("ced", cedReleaseYear);
 
         populateRelationships();
     }
@@ -85,13 +90,13 @@ public class BuildTables {
 
     public static void populateState() throws Exception {
         stmt.execute("insert into ste_disp (ste_code, name, lat, lon) " +
-                "select ste_code" + releaseYear + ", ste_name" + releaseYear +
+                "select ste_code" + lgaReleaseYear + ", ste_name" + lgaReleaseYear +
                 ", ST_Y(ST_Centroid(ST_Collect(f.geom))), ST_X(ST_Centroid(ST_Collect(f.geom))) from " +
-                "(select ste_code" + releaseYear + ", ste_name" + releaseYear + ", (ST_Dump(geom)).geom from lga" + releaseYear +
-                ") as f group by f.ste_code" + releaseYear + ", f.ste_name" + releaseYear);
+                "(select ste_code" + lgaReleaseYear + ", ste_name" + lgaReleaseYear + ", (ST_Dump(geom)).geom from lga" + lgaReleaseYear +
+                ") as f group by f.ste_code" + lgaReleaseYear + ", f.ste_name" + lgaReleaseYear);
     }
 
-    public static void populateAdminTable(String adminCode) throws Exception {
+    public static void populateAdminTable(String adminCode, String releaseYear) throws Exception {
         stmt.execute("insert into " + adminCode + "_disp (" + adminCode + "_code, name, lon, lat) " +
                 "select " + adminCode + "_code" + releaseYear + ", " + adminCode + "_name" + releaseYear +
                 ", ST_X(ST_Centroid(geom)), ST_Y(ST_Centroid(geom)) from " + adminCode + releaseYear +
@@ -104,8 +109,8 @@ public class BuildTables {
         ArrayList<Lga> lgaList = new ArrayList();
         ArrayList<AdminArea> sedList = new ArrayList();
         ArrayList<AdminArea> cedList = new ArrayList();
-        ResultSet rs = stmt.executeQuery("select poa_code" + releaseYear + ", ST_AsEWKB(geom) from poa" +
-                releaseYear + " where geom is not null");
+        ResultSet rs = stmt.executeQuery("select poa_code" + poaReleaseYear + ", ST_AsEWKB(geom) from poa" +
+                poaReleaseYear + " where geom is not null");
         while(rs.next()) {
             Poa poa = new Poa();
             poa.poaCode = rs.getString(1);
@@ -113,8 +118,8 @@ public class BuildTables {
             poaList.add(poa);
         }
         rs.close();
-        rs = stmt.executeQuery("select lga_code" + releaseYear + ", ste_code" + releaseYear +
-                ", ST_AsEWKB(geom) from lga" + releaseYear + " where geom is not null");
+        rs = stmt.executeQuery("select lga_code" + lgaReleaseYear + ", ste_code" + lgaReleaseYear +
+                ", ST_AsEWKB(geom) from lga" + lgaReleaseYear + " where geom is not null");
         while(rs.next()) {
             Lga lga = new Lga();
             lga.lgaCode = rs.getString(1);
@@ -154,8 +159,8 @@ public class BuildTables {
             }
         }
         System.out.println("Time: " + (System.currentTimeMillis() - start));
-        rs = stmt.executeQuery("select sed_code" + releaseYear + ", ST_AsEWKB(geom) from sed" +
-                releaseYear + " where geom is not null");
+        rs = stmt.executeQuery("select sed_code" + sedReleaseYear + ", ST_AsEWKB(geom) from sed" +
+                sedReleaseYear + " where geom is not null");
         while(rs.next()) {
             AdminArea sed = new AdminArea();
             sed.code = rs.getString(1);
@@ -192,8 +197,8 @@ public class BuildTables {
             }
         }
         System.out.println("Time: " + (System.currentTimeMillis() - start));
-        rs = stmt.executeQuery("select ced_code" + releaseYear + ", ST_AsEWKB(geom) from ced" +
-                releaseYear + " where geom is not null");
+        rs = stmt.executeQuery("select ced_code" + cedReleaseYear + ", ST_AsEWKB(geom) from ced" +
+                cedReleaseYear + " where geom is not null");
         while(rs.next()) {
             AdminArea ced = new AdminArea();
             ced.code = rs.getString(1);

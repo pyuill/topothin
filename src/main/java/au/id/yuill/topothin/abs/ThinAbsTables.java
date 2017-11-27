@@ -5,11 +5,6 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution.
  * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
- * <br>
- * Note that until the JTS Topology Suite is formally released under EPL v1.0
- * the licenses of this program (EPL) and JTS (LGPL) are incompatible. This program
- * will not reach a 1.0 release status until JTS is released by the Eclipse working group
- * LocationTech under EPL v1.0
  */
 package au.id.yuill.topothin.abs;
 
@@ -18,12 +13,12 @@ import au.id.yuill.topothin.Row;
 import au.id.yuill.topothin.Table;
 import au.id.yuill.topothin.TopoCoordData;
 
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.MultiPolygon;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.geom.util.GeometryCombiner;
-import com.vividsolutions.jts.io.WKBReader;
-import com.vividsolutions.jts.io.WKBWriter;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.GeometryCombiner;
+import org.locationtech.jts.io.WKBReader;
+import org.locationtech.jts.io.WKBWriter;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -47,7 +42,10 @@ import java.util.Map;
  */
 public class ThinAbsTables {
 
-    public static String releaseYear;
+    public static String poaReleaseYear;
+    public static String lgaReleaseYear;
+    public static String sedReleaseYear;
+    public static String cedReleaseYear;
     public static String dbUrl;
     public static String dbUser;
     public static String dbPass;
@@ -55,13 +53,16 @@ public class ThinAbsTables {
     public static Statement stmt;
 
     public static void main(String[] args) throws Exception {
-        if (args.length == 4) {
-            releaseYear = args[0];
-            dbUrl = args[1];
-            dbUser = args[2];
-            dbPass = args[3];
+        if (args.length == 7) {
+            poaReleaseYear = args[0];
+            lgaReleaseYear = args[1];
+            sedReleaseYear = args[2];
+            cedReleaseYear = args[3];
+            dbUrl = args[4];
+            dbUser = args[5];
+            dbPass = args[6];
         } else {
-            System.out.println("usage: ThinAbsTables releaseYear dbUrl dbUser dbPassword");
+            System.out.println("usage: ThinAbsTables poaReleaseYear lgaReleaseYear sedReleaseYear cedReleaseYear dbUrl dbUser dbPassword");
             System.exit(0);
         }
         Class.forName("org.postgresql.Driver");
@@ -71,10 +72,10 @@ public class ThinAbsTables {
         WKBWriter writer = new WKBWriter(2, true);
         TopoCoordData tcd = new TopoCoordData(new DefaultSimplifier(), 4283);
 
-        Table poaTable = new AbsTable(releaseYear, "poa", null);
-        Table lgaTable = new LgaTable(releaseYear, null);
-        Table sedTable = new AbsTable(releaseYear, "sed", null);
-        Table cedTable = new AbsTable(releaseYear, "ced", null);
+        Table poaTable = new AbsTable(poaReleaseYear, "poa", null);
+        Table lgaTable = new LgaTable(lgaReleaseYear, null);
+        Table sedTable = new AbsTable(sedReleaseYear, "sed", null);
+        Table cedTable = new AbsTable(cedReleaseYear, "ced", null);
 
         poaTable.populateTopoCoordData(conn, reader, tcd);
         lgaTable.populateTopoCoordData(conn, reader, tcd);
