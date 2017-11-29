@@ -29,8 +29,8 @@ public class TopoCoordData implements Serializable {
     static final long serialVersionUID = 1L;
 
     public TopoCoord[][] points = new TopoCoord[65536][];
-    public Map<Edge, Edge> edgeMap = new HashMap();
-    public Map<Table,List<Row>> tableMap = new HashMap();
+    public Map<Edge, Edge> edgeMap = new HashMap<>();
+    public Map<Table,List<Row>> tableMap = new HashMap<>();
     public int coords;
     public GeometryFactory factory;
 
@@ -49,7 +49,7 @@ public class TopoCoordData implements Serializable {
     public void addRow(Row row) {
         List<Row> rows = tableMap.get(row.table);
         if (rows == null) {
-            rows = new ArrayList();
+            rows = new ArrayList<>();
             tableMap.put(row.table, rows);
         }
         rows.add(row);
@@ -144,7 +144,6 @@ public class TopoCoordData implements Serializable {
     }
 
     public void findNodes() {
-        System.out.println("Finding Nodes");
         for (Table table: tableMap.keySet()) {
             for (Row row: tableMap.get(table)) {
                 MultiPolygon multi = row.mp;
@@ -174,16 +173,16 @@ public class TopoCoordData implements Serializable {
 
     }
 
-    public void print() {
+    public void print(StringBuilder buf) {
         for (Table table: tableMap.keySet()) {
             for (Row row: tableMap.get(table)) {
-                System.out.println(row.name);
+                buf.append(row.name);
                 MultiPolygon multi = row.mp;
                 for (int i = 0; i < multi.getNumGeometries(); i++) {
                     Polygon poly = (Polygon)multi.getGeometryN(i);
-                    print(poly.getExteriorRing());
+                    print(poly.getExteriorRing(), buf);
                     for (int j = 0; j < poly.getNumInteriorRing(); j++) {
-                        print(poly.getInteriorRingN(j));
+                        print(poly.getInteriorRingN(j), buf);
                     }
                 }
             }
@@ -192,7 +191,6 @@ public class TopoCoordData implements Serializable {
     }
 
     public void createEdges() throws Exception {
-        System.out.println("Creating Edges");
         for (Table table: tableMap.keySet()) {
             for (Row row : tableMap.get(table)) {
                 MultiPolygon multi = row.mp;
@@ -301,9 +299,6 @@ public class TopoCoordData implements Serializable {
     }
 
     public void simplifyEdges() {
-        System.out.println("Simplifying edges");
-        int originalCoords = 0;
-        int simplifiedCoords = 0;
         for (Edge edge: edgeMap.values()) {
             LineString ls = factory.createLineString(edge.getCoordArray());
             LineString simple = simplifier.simplify(ls);
@@ -313,7 +308,6 @@ public class TopoCoordData implements Serializable {
     }
 
     public void createThinnedPolygons() throws Exception {
-        System.out.println("Creating thinned Polygons");
         for (Table table: tableMap.keySet()) {
             for (Row row : tableMap.get(table)) {
                 List<Polygon> polyList = new ArrayList();
@@ -363,14 +357,11 @@ public class TopoCoordData implements Serializable {
         return ring;
     }
 
-    private void findCodes(Set<String> codeSet, TopoCoord node) {
-
-    }
-
-    private void print(LineString ls) {
+    private void print(LineString ls, StringBuilder buf) {
         CoordinateSequence seq = ls.getCoordinateSequence();
         for (int k = 0; k < seq.size(); k++) {
-            System.out.println("  " + seq.getCoordinate(k));
+            buf.append(' ');
+            buf.append(seq.getCoordinate(k));
         }
 
     }
